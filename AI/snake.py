@@ -3,6 +3,7 @@ from collections import namedtuple
 from enum import Enum
 import numpy as np
 import pygame
+import sys
 
 pygame.init()
 font = pygame.font.Font('fonts/ARCADECLASSIC.TTF', 25)
@@ -36,13 +37,11 @@ class AIGame:
     def __init__(self, w=800, h=600):
         self.width = w
         self.height = h
-        # init display
         self.screen = pygame.display.set_mode((self.width, self.height))
         self.clock = pygame.time.Clock()
         self.reset()
 
     def reset(self):
-        # init game state
         self.direction = Direction.RIGHT
 
         self.head = Point(self.width / 2, self.height / 2)
@@ -66,17 +65,19 @@ class AIGame:
 
     def play_step(self, action):
         self.frame_iteration += 1
-        # 1. collect user input
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-                quit()
-
-        # 2. move
-        self._move(action)  # update the head
+                sys.quit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    sys.exit()
+                    
+        self._move(action)  
         self.snake.insert(0, self.head)
 
-        # 3. check if game over
+
         reward = 0
         game_over = False
         if self.collision() or self.frame_iteration > 100 * len(self.snake):
@@ -84,7 +85,6 @@ class AIGame:
             reward = -10
             return reward, game_over, self.score
 
-        # 4. place new food or just move
         if self.head == self.food:
             self.score += 1
             reward = 10
@@ -93,19 +93,16 @@ class AIGame:
         else:
             self.snake.pop()
 
-        # 5. update ui and clock
+
         self._update_ui()
         self.clock.tick(FPS)
-        # 6. return game over and score
         return reward, game_over, self.score
 
     def collision(self, pt=None):
         if pt is None:
             pt = self.head
-        # hits boundary
         if pt.x > self.width - BLOCK_SIZE or pt.x < 0 or pt.y > self.height - BLOCK_SIZE or pt.y < 0:
             return True
-        # hits itself
         if pt in self.snake[1:]:
             return True
 
@@ -125,20 +122,18 @@ class AIGame:
         pygame.display.flip()
 
     def _move(self, action):
-        # [straight, right, left]
 
         clock_wise = [Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.UP]
         idx = clock_wise.index(self.direction)
 
         if np.array_equal(action, [1, 0, 0]):
-            new_dir = clock_wise[idx]  # no change
+            new_dir = clock_wise[idx]  
         elif np.array_equal(action, [0, 1, 0]):
             next_idx = (idx + 1) % 4
-            new_dir = clock_wise[next_idx]  # right turn r -> d -> l -> u
+            new_dir = clock_wise[next_idx] 
         else:  # [0, 0, 1]
             next_idx = (idx - 1) % 4
-            new_dir = clock_wise[next_idx]  # left turn r -> u -> l -> d
-
+            new_dir = clock_wise[next_idx] 
         self.direction = new_dir
 
         x = self.head.x
