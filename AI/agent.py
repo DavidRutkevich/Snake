@@ -16,11 +16,9 @@ class Agent:
 
     def __init__(self):
         self.n_games = 0
-        # Controls randomnes
         self.epsilon = 0
         # Discount rate must be <1
         self.gamma = 0.8
-        # if maxlen exceeded popleft
         self.memory = deque(maxlen = MAX_MEMORY)
           
         self.model = L_QNET(11, 350, 3)
@@ -28,16 +26,13 @@ class Agent:
         # TODO: model, trainer
 
     def get_state(self, game):
-        # Coordinates of Snake are saved in List first index is head
         head = game.snake[0]
-        
-        # Coordinates surrounding snakes head
+
         p_left = Point(head.x - BLOCK_SIZE, head.y)
         p_right = Point(head.x + BLOCK_SIZE, head.y)
         p_up = Point(head.x, head.y - BLOCK_SIZE)
         p_down = Point(head.x, head.y + BLOCK_SIZE)
-        
-        # Gets current direction 
+
         dir_left = game.direction ==  Direction.LEFT
         dir_right = game.direction ==  Direction.RIGHT
         dir_up = game.direction ==  Direction.UP
@@ -75,19 +70,17 @@ class Agent:
             game.food.y > game.head.y, 
         ]
         
-        return np.array(state, dtype=int) # Converts Bool to 0 1 
+        return np.array(state, dtype=int) 
         
         
 
     def remember(self, state, action, reward, next, game_over):
-        # Popleft if MAX_MEMORY is reached
+       
         self.memory.append((state, action, reward, next, game_over))
 
     def train_long_memory(self):
         if len(self.memory) > BATCH_SIZE:
-            """
-            returns: list of tuples
-            """
+
             small_sample = random.sample(self.memory, BATCH_SIZE)
 
         else:
@@ -95,19 +88,13 @@ class Agent:
         
         states, actions, rewards, next_states, game_overs = zip(*small_sample)
         self.trainer.train_step(states, actions, rewards, next_states, game_overs)
-        #for state, action, reward, next_state, game_over in small_sample:
-        #    self.trainer.train_step(state, action, reward, next, game_over)
-            
+
             
     def train_short_memory(self, state, action, reward, next, game_over):
         self.trainer.train_step(state, action, reward, next, game_over)
 
     def get_action(self, state):
-        # tradeoff exploratin exploitation
-        """
-        The smaller epsilon gets the lower the chance of random moves gets
-        
-        """
+
         FOO = self.epsilon
         self.epsilon = FOO - self.n_games
         final_move =[0, 0, 0]
@@ -130,26 +117,23 @@ def train():
     agent = Agent()
     game = AIGame()
     while True:
-        # Shows amount of games
+
         pygame.display.set_caption('Games: ' + str(agent.n_games))
-        # get old state
+
         old_state = agent.get_state(game)
 
-        # gets move
+   
         final_move = agent.get_action(old_state)
 
-        # performs move and gets resulting state
         reward, done, score = game.play_step(final_move)
         new_state = agent.get_state(game)
 
-        # train short memory
         agent.train_short_memory(old_state, final_move, reward, new_state, done)
 
-        # store in memory
         agent.remember(old_state, final_move, reward, new_state, done)
 
         if done:
-            # train replay memory
+       
             game.reset()
             agent.n_games += 1
             agent.train_long_memory()
